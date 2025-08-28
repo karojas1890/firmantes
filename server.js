@@ -44,11 +44,10 @@ app.get('/api/firmas', async (req, res) => {
 const firmas = rows.map((row, index) => {
   const raw = row._rawData || [];
 
-  const timestamp = raw[0] && raw[0].trim() !== '' ? raw[0].trim() : null;
-  const nombre = raw[1] && raw[1].trim() !== '' ? raw[1].trim() : 'N/A';
-  const codigo = raw[3] && raw[3].trim() !== '' ? raw[3].trim() : 'N/A';
+  const timestamp = raw[0]?.trim() || null;
+  const nombre = raw[1]?.trim() || 'N/A';
+  const codigo = raw[3]?.trim() || 'N/A';
 
-  // Debug por fila
   console.log(`Fila ${index}: { timestamp: "${timestamp}", nombre: "${nombre}", codigo: "${codigo}" }`);
 
   return { timestamp, nombre, codigo };
