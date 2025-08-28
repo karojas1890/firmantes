@@ -6,31 +6,62 @@
     <title>Firmas de Carta de Preocupación - Dr. Francisco Golcher</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Firmas de la carta de preocupación y firme inconformidad</h1>
-            <p>Ante las declaraciones emitidas recientemente por el psiquiatra Francisco Golcher</p>
+        <!-- Header mejorado -->
+        <header class="main-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo">
+                        <i class="fas fa-signature"></i>
+                    </div>
+                    <div class="titles">
+                        <h1>Firmas de Carta de Preocupación</h1>
+                        <p class="subtitle">Ante las declaraciones del Dr. Francisco Golcher</p>
+                    </div>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-badge">
+                        <span class="stat-number" id="total-firmas">0</span>
+                        <span class="stat-label">Firmas Totales</span>
+                    </div>
+                </div>
+            </div>
         </header>
 
-        <div class="stats">
-            <div class="stat-card">
-                <h3 id="total-firmas">0</h3>
-                <p>Total de firmas</p>
+        <!-- Panel de estadísticas mejorado -->
+        <section class="dashboard">
+            <div class="dashboard-card">
+                <div class="card-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Firmas Recientes</h3>
+                    <p>Últimas 24 horas: <span id="recent-firmas">0</span></p>
+                </div>
             </div>
-        </div>
+            
+            <div class="search-panel">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Buscar por nombre...">
+                    <button id="search-btn">Buscar</button>
+                </div>
+                <div class="filter-options">
+                    <span>Filtrar:</span>
+                    <button class="filter-btn active" data-filter="all">
+                        <i class="fas fa-list"></i> Todas
+                    </button>
+                    <button class="filter-btn" data-filter="recent">
+                        <i class="fas fa-clock"></i> Recientes
+                    </button>
+                </div>
+            </div>
+        </section>
 
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="Buscar por nombre...">
-            <button id="search-btn"><i class="fas fa-search"></i></button>
-        </div>
-
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">Todas</button>
-            <button class="filter-btn" data-filter="recent">Más recientes</button>
-        </div>
-
+        <!-- Resto del contenido -->
         <div class="table-container">
             <table id="firmas-table">
                 <thead>
@@ -46,9 +77,9 @@
         </div>
 
         <div class="pagination">
-            <button id="prev-btn">Anterior</button>
+            <button id="prev-btn"><i class="fas fa-chevron-left"></i> Anterior</button>
             <span id="page-info">Página 1 de 1</span>
-            <button id="next-btn">Siguiente</button>
+            <button id="next-btn">Siguiente <i class="fas fa-chevron-right"></i></button>
         </div>
 
         <footer>
