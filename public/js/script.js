@@ -25,30 +25,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cargar datos
     loadFirmas();
     
-   // En la función loadFirmas, modifica el catch:
-async function loadFirmas() {
-    try {
-        firmasBody.innerHTML = '<tr><td colspan="3" class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando firmas...</td></tr>';
-        
-        const response = await fetch('/api/firmas');
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-            throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+    async function loadFirmas() {
+        try {
+            firmasBody.innerHTML = '<tr><td colspan="3" class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando firmas...</td></tr>';
+            
+            const response = await fetch('/api/firmas');
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+            }
+            
+            allFirmas = await response.json();
+            
+            // DEBUG: Mostrar estructura de datos recibida
+            console.log('Datos recibidos from API:', allFirmas);
+            if (allFirmas.length > 0) {
+                console.log('Primera firma:', allFirmas[0]);
+                console.log('Campos de la primera firma:', Object.keys(allFirmas[0]));
+            }
+            
+            totalFirmas.textContent = allFirmas.length.toLocaleString();
+            
+            filteredFirmas = [...allFirmas];
+            sortFirmas(currentSort.column, currentSort.direction);
+            renderFirmas();
+            
+        } catch (error) {
+            console.error('Error:', error);
+            firmasBody.innerHTML = `<tr><td colspan="3" class="error"><i class="fas fa-exclamation-circle"></i> ${error.message}</td></tr>`;
         }
-        
-        allFirmas = await response.json();
-        totalFirmas.textContent = allFirmas.length.toLocaleString();
-        
-        filteredFirmas = [...allFirmas];
-        sortFirmas(currentSort.column, currentSort.direction);
-        renderFirmas();
-        
-    } catch (error) {
-        console.error('Error:', error);
-        firmasBody.innerHTML = `<tr><td colspan="3" class="error"><i class="fas fa-exclamation-circle"></i> ${error.message}</td></tr>`;
     }
-}
     
     function renderFirmas() {
         const startIndex = (currentPage - 1) * itemsPerPage;
@@ -60,13 +67,19 @@ async function loadFirmas() {
             return;
         }
         
+        // Debug: mostrar los datos que se van a renderizar
+        console.log('Datos a renderizar:', pageFirmas);
+        
         let html = '';
         pageFirmas.forEach(firma => {
+            // Debug por cada firma
+            console.log('Procesando firma:', firma);
+            
             html += `
                 <tr>
                     <td>${formatDate(firma.timestamp)}</td>
-                    <td>${firma.nombre}</td>
-                    <td>${firma.codigo}</td>
+                    <td>${firma.nombre || 'N/A'}</td>
+                    <td>${firma.codigo || 'N/A'}</td>
                 </tr>
             `;
         });
@@ -79,10 +92,34 @@ async function loadFirmas() {
         if (!dateString) return 'N/A';
         
         try {
+            // Diferentes formatos de fecha que Google Sheets podría usar
             const date = new Date(dateString);
-            return date.toLocaleString('es-ES');
+            
+            // Si la fecha es inválida, intentar parsear manualmente
+            if (isNaN(date.getTime())) {
+                // Intentar parsear formato de fecha hispano (dd/mm/yyyy hh:mm:ss)
+                const hispanicFormat = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})/);
+                if (hispanicFormat) {
+                    const [, day, month, year, hours, minutes, seconds] = hispanicFormat;
+                    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+                }
+                
+                // Si no se puede parsear, devolver el valor original
+                return dateString;
+            }
+            
+            // Formatear fecha correctamente
+            return date.toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
         } catch (e) {
-            return dateString;
+            console.error('Error formateando fecha:', dateString, e);
+            return dateString; // Devolver el valor original si hay error
         }
     }
     

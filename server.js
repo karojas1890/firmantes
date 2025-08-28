@@ -57,13 +57,22 @@ app.get('/api/firmas', async (req, res) => {
     }
     
     // Mapear datos - USANDO LOS NOMBRES CORRECTOS DE COLUMNAS
-    const firmas = rows.map(row => {
+    const firmas = rows.map((row, index) => {
+      // Debug: mostrar los datos de cada fila
+      console.log(`Fila ${index}:`, {
+        timestamp: row['Timestamp'],
+        nombre: row['Nombre completo'], 
+        codigo: row['Código de persona colegiada']
+      });
+      
       return {
         timestamp: row['Timestamp'] || '',
         nombre: row['Nombre completo'] || '',
         codigo: row['Código de persona colegiada'] || ''
       };
     });
+
+    console.log('Datos procesados:', JSON.stringify(firmas.slice(0, 3), null, 2)); // Mostrar solo las primeras 3
     
     console.log('Datos procesados correctamente. Firmas encontradas:', firmas.length);
     res.json(firmas);
