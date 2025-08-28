@@ -50,30 +50,39 @@ app.get('/api/firmas', async (req, res) => {
     const rows = await sheet.getRows();
     console.log('Filas obtenidas:', rows.length);
     
-    // DEBUG: Mostrar las primeras filas para verificar la estructura
+    // Verificar columnas disponibles
     if (rows.length > 0) {
-      console.log('Primera fila:', rows[0]);
       console.log('Campos disponibles:', Object.keys(rows[0]));
     }
-    
-    // Mapear datos - USANDO LOS NOMBRES CORRECTOS DE COLUMNAS
+
+    // Nombre exacto de la columna gigante
+    const colName = 'Firmas de la carta de preocupación y firme inconformidad ante las declaraciones emitidas recientemente por el psiquiatra Francisco Golcher.';
+
+    // Mapear datos
     const firmas = rows.map((row, index) => {
-      // Debug: mostrar los datos de cada fila
-      console.log(`Fila ${index}:`, {
-        timestamp: row['Timestamp'],
-        nombre: row['Nombre completo'], 
-        codigo: row['Código de persona colegiada']
-      });
+      const raw = row[colName] || '';
       
-      return {
-        timestamp: row['Timestamp'] || '',
-        nombre: row['Nombre completo'] || '',
-        codigo: row['Código de persona colegiada'] || ''
-      };
+      // Intentar separar en partes
+      let timestamp = '';
+      let nombre = '';
+      let codigo = '';
+
+      if (raw.includes('-')) {
+        const parts = raw.split('-').map(p => p.trim());
+        timestamp = parts[0] || '';
+        nombre = parts[1] || '';
+        codigo = parts[2] || '';
+      } else {
+        // Si no hay separador, guardar todo en nombre
+        nombre = raw;
+      }
+
+      // Debug por fila
+      console.log(`Fila ${index}: raw="${raw}" -> { timestamp: "${timestamp}", nombre: "${nombre}", codigo: "${codigo}" }`);
+
+      return { timestamp, nombre, codigo };
     });
 
-    console.log('Datos procesados:', JSON.stringify(firmas.slice(0, 3), null, 2)); // Mostrar solo las primeras 3
-    
     console.log('Datos procesados correctamente. Firmas encontradas:', firmas.length);
     res.json(firmas);
     
