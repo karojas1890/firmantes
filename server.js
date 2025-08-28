@@ -14,78 +14,44 @@ app.get('/api/firmas', async (req, res) => {
   try {
     console.log('Iniciando obtención de firmas...');
     
-    // Verificar que las variables de entorno estén configuradas
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
       throw new Error('Configuración de Google API no encontrada. Verifica las variables de entorno.');
     }
 
-    console.log('Credenciales encontradas, inicializando documento...');
-    
-    // Inicializar el documento de Google Sheets
     const doc = new GoogleSpreadsheet('1SsUUtsYqFBdXj6ho9LIiLpMgSTw8JwnTH9k8yOERErs');
-    
-    // Formatear la clave privada
     const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
-    
-    console.log('Autenticando con Google Sheets...');
-    
-    // Autenticar
+
     await doc.useServiceAccountAuth({
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       private_key: privateKey,
     });
 
-    console.log('Autenticación exitosa, cargando información del documento...');
-    
-    // Cargar información del documento
     await doc.loadInfo();
     console.log('Documento cargado:', doc.title);
-    
-    // Obtener la primera hoja
-    const sheet = doc.sheetsByIndex[0];
-    console.log('Hoja seleccionada:', sheet.title);
-    
-    // Obtener filas
-    console.log('Obteniendo filas...');
-    const rows = await sheet.getRows();
-    console.log('Filas obtenidas:', rows.length);
-    
-    // Verificar columnas disponibles
-    if (rows.length > 0) {
-      console.log('Campos disponibles:', Object.keys(rows[0]));
-    }
 
-    // Nombre exacto de la columna gigante
-    const colName = 'Firmas de la carta de preocupación y firme inconformidad ante las declaraciones emitidas recientemente por el psiquiatra Francisco Golcher.';
-
-    // Mapear datos
-    const firmas = rows.map((row, index) => {
-      const raw = row[colName] || '';
-      
-      // Intentar separar en partes
-      let timestamp = '';
-      let nombre = '';
-      let codigo = '';
-
-      if (raw.includes('-')) {
-        const parts = raw.split('-').map(p => p.trim());
-        timestamp = parts[0] || '';
-        nombre = parts[1] || '';
-        codigo = parts[2] || '';
-      } else {
-        // Si no hay separador, guardar todo en nombre
-        nombre = raw;
-      }
-
-      // Debug por fila
-      console.log(`Fila ${index}: raw="${raw}" -> { timestamp: "${timestamp}", nombre: "${nombre}", codigo: "${codigo}" }`);
-
-      return { timestamp, nombre, codigo };
+    // 🔍 Explorar todas las hojas y mostrar encabezados
+    doc.sheetsByIndex.forEach((s, i) => {
+      console.log(`Hoja[${i}] -> titulo="${s.title}", encabezados:`, s.headerValues);
     });
 
-    console.log('Datos procesados correctamente. Firmas encontradas:', firmas.length);
-    res.json(firmas);
-    
+    // ⚠️ De momento seguimos usando la primera hoja
+    const sheet = doc.sheetsByIndex[0];
+    const rows = await sheet.getRows();
+
+    console.log(`Filas obtenidas en "${sheet.title}":`, rows.length);
+
+    // Solo devolver la fila cruda como prueba (para inspeccionar)
+    const firmas = rows.map((row, index) => {
+      return { ...row };
+    });
+
+    res.json({
+      hojaSeleccionada: sheet.title,
+      totalHojas: doc.sheetCount,
+      totalFilas: rows.length,
+      muestra: firmas.slice(0, 5), // primeras 5 filas como muestra
+    });
+
   } catch (error) {
     console.error('Error detallado al obtener las firmas:', error);
     res.status(500).json({ 
@@ -96,7 +62,7 @@ app.get('/api/firmas', async (req, res) => {
   }
 });
 
-// Ruta de salud para verificar que el servidor funciona
+// Ruta de salud
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -105,7 +71,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Ruta principal - sirve el frontend
+// Ruta principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
