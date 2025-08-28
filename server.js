@@ -40,32 +40,56 @@ app.get('/api/firmas', async (req, res) => {
       return res.json([]);
     }
 
-    // Debug: ver la estructura de la primera fila
-    console.log('Estructura de la primera fila:', Object.keys(rows[0]));
-    console.log('Datos de la primera fila:', rows[0]._rawData);
-
-    // Google Forms crea una estructura donde:
-    // - La primera fila es el título del formulario (lo ignoramos)
-    // - La segunda fila son los encabezados reales
-    // - Las filas siguientes son los datos
-
-    // Para acceder a los datos correctamente, necesitamos usar los nombres de campo que Google Sheets genera
-    // Los campos suelen ser: Timestamp, Nombre completo, Código de persona colegiada
-
-    const firmas = rows.map((row) => {
-      // Usar los nombres exactos de las columnas como están en Google Sheets
-      const timestamp = row['Timestamp'] ? row['Timestamp'].trim() : 'N/A';
-      const nombre = row['Nombre completo'] ? row['Nombre completo'].trim() : 'N/A';
-      const codigo = row['Código de persona colegiada'] ? row['Código de persona colegiada'].trim() : 'N/A';
-
-      return { timestamp, nombre, codigo };
+    // Debug: ver todos los campos disponibles de la primera fila
+    console.log('Todos los campos de la primera fila:');
+    const firstRow = rows[0];
+    Object.keys(firstRow).forEach(key => {
+      if (!key.startsWith('_')) { // Excluir campos internos
+        console.log(`- ${key}: ${firstRow[key]}`);
+      }
     });
 
-    // Filtrar la primera fila si es el título del formulario
+    console.log('Datos crudos de la primera fila:', firstRow._rawData);
+
+    // Procesar las filas
+    const firmas = rows.map((row) => {
+      try {
+        // Usar los nombres exactos de las columnas como están en Google Sheets
+        const timestamp = row['Timestamp'] ? row['Timestamp'].trim() : 'N/A';
+        const nombre = row['Nombre completo '] ? row['Nombre completo '].trim() : 'N/A'; // ¡Note el espacio al final!
+        
+        // Buscar el código - puede estar en diferentes campos
+        let codigo = 'N/A';
+        
+        // Intentar encontrar el campo que contiene el código
+        Object.keys(row).forEach(key => {
+          if (!key.startsWith('_') && 
+              key !== 'Timestamp' && 
+              key !== 'Nombre completo ' &&
+              row[key] && 
+              row[key].trim() !== '') {
+            codigo = row[key].trim();
+          }
+        });
+
+        return { timestamp, nombre, codigo };
+      } catch (error) {
+        console.error('Error procesando fila:', error);
+        return { timestamp: 'Error', nombre: 'Error', codigo: 'Error' };
+      }
+    });
+
+    // Filtrar filas vacías o de encabezado
     const firmasFiltradas = firmas.filter(firma => 
       firma.timestamp !== 'N/A' && 
+      firma.timestamp !== 'Timestamp' && // Excluir encabezados
       !firma.timestamp.includes('Firmas de la carta')
     );
+
+    console.log(`Firmas después de filtrar: ${firmasFiltradas.length}`);
+    if (firmasFiltradas.length > 0) {
+      console.log('Primera firma ejemplo:', firmasFiltradas[0]);
+    }
 
     res.json(firmasFiltradas);
 
