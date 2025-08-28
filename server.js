@@ -36,27 +36,38 @@ app.get('/api/firmas', async (req, res) => {
     const rows = await sheet.getRows();
     console.log(`Filas obtenidas: ${rows.length}`);
 
-    if (rows.length > 0) {
-      console.log('Ejemplo fila[0]._rawData:', rows[0]._rawData);
+    if (rows.length === 0) {
+      return res.json([]);
     }
 
-    // Mapear datos de forma segura
-    const firmas = rows.map((row, index) => {
-  const raw = row._rawData || [];
+    // Debug: ver la estructura de la primera fila
+    console.log('Estructura de la primera fila:', Object.keys(rows[0]));
+    console.log('Datos de la primera fila:', rows[0]._rawData);
 
-  // Debug
-  console.log(`Fila ${index} raw:`, raw);
+    // Google Forms crea una estructura donde:
+    // - La primera fila es el título del formulario (lo ignoramos)
+    // - La segunda fila son los encabezados reales
+    // - Las filas siguientes son los datos
 
-  // Usar heurística: primero es timestamp, segundo nombre, el último campo es código
-  const timestamp = raw[0] && raw[0].trim() !== '' ? raw[0].trim() : null;
-  const nombre    = raw[1] && raw[1].trim() !== '' ? raw[1].trim() : 'N/A';
-  const codigo    = raw[raw.length - 1] && raw[raw.length - 1].trim() !== '' ? raw[raw.length - 1].trim() : 'N/A';
+    // Para acceder a los datos correctamente, necesitamos usar los nombres de campo que Google Sheets genera
+    // Los campos suelen ser: Timestamp, Nombre completo, Código de persona colegiada
 
-  return { timestamp, nombre, codigo };
-});
+    const firmas = rows.map((row) => {
+      // Usar los nombres exactos de las columnas como están en Google Sheets
+      const timestamp = row['Timestamp'] ? row['Timestamp'].trim() : 'N/A';
+      const nombre = row['Nombre completo'] ? row['Nombre completo'].trim() : 'N/A';
+      const codigo = row['Código de persona colegiada'] ? row['Código de persona colegiada'].trim() : 'N/A';
 
+      return { timestamp, nombre, codigo };
+    });
 
-    res.json(firmas);
+    // Filtrar la primera fila si es el título del formulario
+    const firmasFiltradas = firmas.filter(firma => 
+      firma.timestamp !== 'N/A' && 
+      !firma.timestamp.includes('Firmas de la carta')
+    );
+
+    res.json(firmasFiltradas);
 
   } catch (error) {
     console.error('Error detallado al obtener las firmas:', error);
@@ -68,7 +79,7 @@ app.get('/api/firmas', async (req, res) => {
   }
 });
 
-// Ruta de salud
+// Resto del código se mantiene igual...
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -77,7 +88,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Ruta principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
