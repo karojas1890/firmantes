@@ -9,13 +9,12 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Ruta para obtener los datos de las firmas
 app.get('/api/firmas', async (req, res) => {
   try {
     console.log('Iniciando obtención de firmas...');
-    
+
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-      throw new Error('Configuración de Google API no encontrada. Verifica las variables de entorno.');
+      throw new Error('Faltan credenciales de Google API en las variables de entorno.');
     }
 
     const doc = new GoogleSpreadsheet('1SsUUtsYqFBdXj6ho9LIiLpMgSTw8JwnTH9k8yOERErs');
@@ -29,32 +28,38 @@ app.get('/api/firmas', async (req, res) => {
     await doc.loadInfo();
     console.log('Documento cargado:', doc.title);
 
-    // 🔍 Explorar todas las hojas y mostrar encabezados
-    doc.sheetsByIndex.forEach((s, i) => {
-      console.log(`Hoja[${i}] -> titulo="${s.title}", encabezados:`, s.headerValues);
-    });
-
-    // ⚠️ De momento seguimos usando la primera hoja
+    // Usar la hoja "Firmas recolectadas"
     const sheet = doc.sheetsByIndex[0];
+    console.log(`Usando hoja: ${sheet.title}`);
+
     const rows = await sheet.getRows();
+    console.log(`Filas obtenidas: ${rows.length}`);
 
-    console.log(`Filas obtenidas en "${sheet.title}":`, rows.length);
+    if (rows.length > 0) {
+      console.log('Ejemplo fila[0]._rawData:', rows[0]._rawData);
+      console.log('Ejemplo fila[1]._rawData:', rows[1]?._rawData);
+    }
 
-    // Solo devolver la fila cruda como prueba (para inspeccionar)
+    // Mapear datos: cada fila como array
     const firmas = rows.map((row, index) => {
-      return { ...row };
+      const raw = row._rawData; // array con celdas de la fila
+      // Ejemplo: [ "26/08/2025 09:45:00", "Juan Pérez", "12345" ]
+      return {
+        timestamp: raw[0] || '',
+        nombre: raw[1] || '',
+        codigo: raw[2] || '',
+      };
     });
 
     res.json({
       hojaSeleccionada: sheet.title,
-      totalHojas: doc.sheetCount,
       totalFilas: rows.length,
-      muestra: firmas.slice(0, 5), // primeras 5 filas como muestra
+      muestra: firmas.slice(0, 5), // primeras 5 firmas
     });
 
   } catch (error) {
     console.error('Error detallado al obtener las firmas:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error al obtener los datos',
       message: error.message,
       stack: process.env.NODE_ENV === 'production' ? '' : error.stack
@@ -62,16 +67,14 @@ app.get('/api/firmas', async (req, res) => {
   }
 });
 
-// Ruta de salud
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Servidor funcionando correctamente',
     timestamp: new Date().toISOString()
   });
 });
 
-// Ruta principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
