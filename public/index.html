@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firmas de Carta de Preocupación - Dr. Francisco Golcher</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Firmas de la carta de preocupación y firme inconformidad</h1>
+            <p>Ante las declaraciones emitidas recientemente por el psiquiatra Francisco Golcher</p>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3 id="total-firmas">0</h3>
+                <p>Total de firmas</p>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Buscar por nombre o código...">
+            <button id="search-btn"><i class="fas fa-search"></i></button>
+        </div>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Todas</button>
+            <button class="filter-btn" data-filter="recent">Más recientes</button>
+        </div>
+
+        <div class="table-container">
+            <table id="firmas-table">
+                <thead>
+                    <tr>
+                        <th>Fecha y Hora <i class="fas fa-sort"></i></th>
+                        <th>Nombre Completo <i class="fas fa-sort"></i></th>
+                        <th>Código Colegiado <i class="fas fa-sort"></i></th>
+                    </tr>
+                </thead>
+                <tbody id="firmas-body">
+                    <!-- Los datos se cargarán aquí -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <button id="prev-btn">Anterior</button>
+            <span id="page-info">Página 1 de 1</span>
+            <button id="next-btn">Siguiente</button>
+        </div>
+
+        <footer>
+            <p>Sistema de visualización de firmas - Actualizado el <span id="update-date"></span></p>
+        </footer>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
