@@ -1,218 +1,150 @@
 document.addEventListener('DOMContentLoaded', function() {
     const firmasBody = document.getElementById('firmas-body');
-    const totalFirmas = document.getElementById('total-firmas');
+    const totalFirmasElement = document.getElementById('total-firmas');
     const searchInput = document.getElementById('search-input');
     const searchBtn = document.getElementById('search-btn');
     const filterBtns = document.querySelectorAll('.filter-btn');
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const pageInfo = document.getElementById('page-info');
-    const updateDate = document.getElementById('update-date');
-    
+    const updateDateElement = document.getElementById('update-date');
+
     let allFirmas = [];
     let filteredFirmas = [];
     let currentPage = 1;
     const itemsPerPage = 20;
     let currentSort = { column: 'timestamp', direction: 'desc' };
-    
-    // Formatear fecha de actualización
-    updateDate.textContent = new Date().toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-    
-    // Cargar datos
-    loadFirmas();
-    
-    async function loadFirmas() {
+
+    // Formatear fecha
+    function formatDate(dateString) {
+        if (!dateString || dateString === 'N/A') return 'N/A';
+        
         try {
-            firmasBody.innerHTML = '<tr><td colspan="3" class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando firmas...</td></tr>';
-            
-            const response = await fetch('/api/firmas');
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-                throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-            }
-            
-            allFirmas = await response.json();
-            
-            // DEBUG: Mostrar estructura de datos recibida
-            console.log('Datos recibidos from API:', allFirmas);
-            if (allFirmas.length > 0) {
-                console.log('Primera firma:', allFirmas[0]);
-                console.log('Campos de la primera firma:', Object.keys(allFirmas[0]));
-            }
-            
-            totalFirmas.textContent = allFirmas.length.toLocaleString();
-            
-            filteredFirmas = [...allFirmas];
-            sortFirmas(currentSort.column, currentSort.direction);
-            renderFirmas();
-            
-        } catch (error) {
-            console.error('Error:', error);
-            firmasBody.innerHTML = `<tr><td colspan="3" class="error"><i class="fas fa-exclamation-circle"></i> ${error.message}</td></tr>`;
+            const date = new Date(dateString);
+            return date.toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return dateString;
         }
     }
-    
+
+    // Cargar datos
+    async function loadFirmas() {
+        try {
+            const response = await fetch('/api/firmas');
+            if (!response.ok) throw new Error('Error al cargar los datos');
+            
+            const data = await response.json();
+            allFirmas = data.map(item => ({
+                timestamp: item.timestamp,
+                nombre: item.nombre
+            }));
+            
+            filteredFirmas = [...allFirmas];
+            updateTotalFirmas();
+            sortFirmas(currentSort.column, currentSort.direction);
+            renderFirmas();
+            updateDateElement.textContent = new Date().toLocaleDateString('es-ES');
+        } catch (error) {
+            console.error('Error:', error);
+            firmasBody.innerHTML = `<tr><td colspan="2" class="error">Error al cargar los datos: ${error.message}</td></tr>`;
+        }
+    }
+
+    // Renderizar firmas en la tabla
     function renderFirmas() {
         const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const pageFirmas = filteredFirmas.slice(startIndex, endIndex);
+        const paginatedFirmas = filteredFirmas.slice(startIndex, startIndex + itemsPerPage);
         
-        if (pageFirmas.length === 0) {
-            firmasBody.innerHTML = '<tr><td colspan="3" class="loading">No se encontraron firmas</td></tr>';
+        if (paginatedFirmas.length === 0) {
+            firmasBody.innerHTML = `<tr><td colspan="2" class="no-data">No se encontraron firmas</td></tr>`;
             return;
         }
         
-        // Debug: mostrar los datos que se van a renderizar
-        console.log('Datos a renderizar:', pageFirmas);
+        firmasBody.innerHTML = paginatedFirmas.map(firma => `
+            <tr>
+                <td>${formatDate(firma.timestamp)}</td>
+                <td>${firma.nombre}</td>
+            </tr>
+        `).join('');
         
-        let html = '';
-        pageFirmas.forEach(firma => {
-            // Debug por cada firma
-            console.log('Procesando firma:', firma);
-            
-            html += `
-                <tr>
-                    <td>${formatDate(firma.timestamp)}</td>
-                    <td>${firma.nombre || 'N/A'}</td>
-                    <td>${firma.codigo || 'N/A'}</td>
-                </tr>
-            `;
-        });
-        
-        firmasBody.innerHTML = html;
         updatePagination();
     }
-    
-    function formatDate(dateString) {
-    // Si no viene nada o es nulo, devolvemos "N/A"
-    if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') {
-        return 'N/A';
+
+    // Actualizar el total de firmas
+    function updateTotalFirmas() {
+        totalFirmasElement.textContent = filteredFirmas.length.toLocaleString();
     }
 
-    try {
-        const date = new Date(dateString);
-
-        // Verificar si la fecha es válida
-        if (isNaN(date.getTime())) {
-            // Intentar parsear formato de fecha hispano (dd/mm/yyyy hh:mm:ss)
-            const hispanicFormat = dateString.match(
-                /(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2})(?::(\d{2}))?/
-            );
-            if (hispanicFormat) {
-                const [, day, month, year, hours, minutes, seconds = '00'] = hispanicFormat;
-                return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year} ${hours.padStart(2, '0')}:${minutes}:${seconds.padStart(2, '0')}`;
-            }
-
-            // Si no se puede parsear, devolver el valor original
-            return dateString;
-        }
-
-        // Fecha válida: formatear en español
-        return date.toLocaleString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-
-    } catch (e) {
-        console.error('Error formateando fecha:', dateString, e);
-        return dateString; // Devolver el valor original si hay error
-    }
-}
-
-    function updatePagination() {
-        const totalPages = Math.ceil(filteredFirmas.length / itemsPerPage);
-        
-        pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage === totalPages || totalPages === 0;
-    }
-    
+    // Ordenar firmas
     function sortFirmas(column, direction) {
         filteredFirmas.sort((a, b) => {
-            let valueA = a[column];
-            let valueB = b[column];
+            let valueA = a[column] || '';
+            let valueB = b[column] || '';
             
             if (column === 'timestamp') {
                 valueA = new Date(valueA);
                 valueB = new Date(valueB);
             } else {
-                valueA = valueA ? valueA.toString().toLowerCase() : '';
-                valueB = valueB ? valueB.toString().toLowerCase() : '';
+                valueA = valueA.toString().toLowerCase();
+                valueB = valueB.toString().toLowerCase();
             }
             
             if (valueA < valueB) return direction === 'asc' ? -1 : 1;
             if (valueA > valueB) return direction === 'asc' ? 1 : -1;
             return 0;
         });
+        
+        currentSort = { column, direction };
+        currentPage = 1;
+        renderFirmas();
     }
-    
-    // Event listeners
-    searchBtn.addEventListener('click', performSearch);
-    searchInput.addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') performSearch();
-    });
-    
-    function performSearch() {
+
+    // Actualizar paginación
+    function updatePagination() {
+        const totalPages = Math.ceil(filteredFirmas.length / itemsPerPage);
+        pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+        
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+    }
+
+    // Filtrar firmas por búsqueda
+    function filterFirmas() {
         const searchTerm = searchInput.value.toLowerCase().trim();
         
         if (searchTerm === '') {
             filteredFirmas = [...allFirmas];
         } else {
             filteredFirmas = allFirmas.filter(firma => 
-                (firma.nombre && firma.nombre.toLowerCase().includes(searchTerm)) ||
-                (firma.codigo && firma.codigo.toLowerCase().includes(searchTerm))
+                firma.nombre.toLowerCase().includes(searchTerm)
             );
         }
         
         currentPage = 1;
+        updateTotalFirmas();
         sortFirmas(currentSort.column, currentSort.direction);
-        renderFirmas();
     }
+
+    // Event listeners
+    searchInput.addEventListener('input', filterFirmas);
+    searchBtn.addEventListener('click', filterFirmas);
     
     filterBtns.forEach(btn => {
         btn.addEventListener('click', function() {
             filterBtns.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             
-            const filter = this.dataset.filter;
-            
-            if (filter === 'recent') {
-                filteredFirmas = [...allFirmas];
-                currentSort = { column: 'timestamp', direction: 'desc' };
+            if (this.dataset.filter === 'recent') {
                 sortFirmas('timestamp', 'desc');
             } else {
-                filteredFirmas = [...allFirmas];
-                sortFirmas(currentSort.column, currentSort.direction);
+                sortFirmas('timestamp', 'asc');
             }
-            
-            currentPage = 1;
-            renderFirmas();
-        });
-    });
-    
-    // Ordenar por columnas
-    document.querySelectorAll('th').forEach(th => {
-        th.addEventListener('click', function() {
-            const column = this.cellIndex === 0 ? 'timestamp' : 
-                          this.cellIndex === 1 ? 'nombre' : 'codigo';
-            
-            if (currentSort.column === column) {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSort = { column, direction: 'asc' };
-            }
-            
-            sortFirmas(currentSort.column, currentSort.direction);
-            renderFirmas();
         });
     });
     
@@ -230,4 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderFirmas();
         }
     });
+    
+    // Inicializar
+    loadFirmas();
 });
