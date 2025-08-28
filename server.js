@@ -13,89 +13,82 @@ app.use(express.json());
 app.get('/api/firmas', async (req, res) => {
   try {
     console.log('Iniciando obtención de firmas...');
-
+    
+    // Verificar que las variables de entorno estén configuradas
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-      throw new Error('Faltan credenciales de Google API en las variables de entorno.');
+      throw new Error('Configuración de Google API no encontrada. Verifica las variables de entorno.');
     }
 
+    console.log('Credenciales encontradas, inicializando documento...');
+    
+    // Inicializar el documento de Google Sheets
     const doc = new GoogleSpreadsheet('1SsUUtsYqFBdXj6ho9LIiLpMgSTw8JwnTH9k8yOERErs');
+    
+    // Formatear la clave privada
     const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
-
+    
+    console.log('Autenticando con Google Sheets...');
+    
+    // Autenticar
     await doc.useServiceAccountAuth({
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       private_key: privateKey,
     });
 
+    console.log('Autenticación exitosa, cargando información del documento...');
+    
+    // Cargar información del documento
     await doc.loadInfo();
     console.log('Documento cargado:', doc.title);
-
-    // Usar la hoja "Firmas recolectadas"
+    
+    // Obtener la primera hoja
     const sheet = doc.sheetsByIndex[0];
-    console.log(`Usando hoja: ${sheet.title}`);
-
+    console.log('Hoja seleccionada:', sheet.title);
+    
+    // Obtener filas
+    console.log('Obteniendo filas...');
     const rows = await sheet.getRows();
-    console.log(`Filas obtenidas: ${rows.length}`);
-
-    if (rows.length === 0) {
-      return res.json([]);
+    console.log('Filas obtenidas:', rows.length);
+    
+    // Verificar columnas disponibles
+    if (rows.length > 0) {
+      console.log('Campos disponibles:', Object.keys(rows[0]));
     }
 
-    // Debug: ver todos los campos disponibles de la primera fila
-    console.log('Todos los campos de la primera fila:');
-    const firstRow = rows[0];
-    Object.keys(firstRow).forEach(key => {
-      if (!key.startsWith('_')) { // Excluir campos internos
-        console.log(`- ${key}: ${firstRow[key]}`);
+    // Nombre exacto de la columna gigante
+    const colName = 'Firmas de la carta de preocupación y firme inconformidad ante las declaraciones emitidas recientemente por el psiquiatra Francisco Golcher.';
+
+    // Mapear datos
+    const firmas = rows.map((row, index) => {
+      const raw = row[colName] || '';
+      
+      // Intentar separar en partes
+      let timestamp = '';
+      let nombre = '';
+      let codigo = '';
+
+      if (raw.includes('-')) {
+        const parts = raw.split('-').map(p => p.trim());
+        timestamp = parts[0] || '';
+        nombre = parts[1] || '';
+        codigo = parts[2] || '';
+      } else {
+        // Si no hay separador, guardar todo en nombre
+        nombre = raw;
       }
+
+      // Debug por fila
+      console.log(`Fila ${index}: raw="${raw}" -> { timestamp: "${timestamp}", nombre: "${nombre}", codigo: "${codigo}" }`);
+
+      return { timestamp, nombre, codigo };
     });
 
-    console.log('Datos crudos de la primera fila:', firstRow._rawData);
-
-    // Procesar las filas
-    const firmas = rows.map((row) => {
-      try {
-        // Usar los nombres exactos de las columnas como están en Google Sheets
-        const timestamp = row['Timestamp'] ? row['Timestamp'].trim() : 'N/A';
-        const nombre = row['Nombre completo '] ? row['Nombre completo '].trim() : 'N/A'; // ¡Note el espacio al final!
-        
-        // Buscar el código - puede estar en diferentes campos
-        let codigo = 'N/A';
-        
-        // Intentar encontrar el campo que contiene el código
-        Object.keys(row).forEach(key => {
-          if (!key.startsWith('_') && 
-              key !== 'Timestamp' && 
-              key !== 'Nombre completo ' &&
-              row[key] && 
-              row[key].trim() !== '') {
-            codigo = row[key].trim();
-          }
-        });
-
-        return { timestamp, nombre, codigo };
-      } catch (error) {
-        console.error('Error procesando fila:', error);
-        return { timestamp: 'Error', nombre: 'Error', codigo: 'Error' };
-      }
-    });
-
-    // Filtrar filas vacías o de encabezado
-    const firmasFiltradas = firmas.filter(firma => 
-      firma.timestamp !== 'N/A' && 
-      firma.timestamp !== 'Timestamp' && // Excluir encabezados
-      !firma.timestamp.includes('Firmas de la carta')
-    );
-
-    console.log(`Firmas después de filtrar: ${firmasFiltradas.length}`);
-    if (firmasFiltradas.length > 0) {
-      console.log('Primera firma ejemplo:', firmasFiltradas[0]);
-    }
-
-    res.json(firmasFiltradas);
-
+    console.log('Datos procesados correctamente. Firmas encontradas:', firmas.length);
+    res.json(firmas);
+    
   } catch (error) {
     console.error('Error detallado al obtener las firmas:', error);
-    res.status(500).json({
+    res.status(500).json({ 
       error: 'Error al obtener los datos',
       message: error.message,
       stack: process.env.NODE_ENV === 'production' ? '' : error.stack
@@ -103,15 +96,16 @@ app.get('/api/firmas', async (req, res) => {
   }
 });
 
-// Resto del código se mantiene igual...
+// Ruta de salud para verificar que el servidor funciona
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
+  res.json({ 
+    status: 'OK', 
     message: 'Servidor funcionando correctamente',
     timestamp: new Date().toISOString()
   });
 });
 
+// Ruta principal - sirve el frontend
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -119,3 +113,4 @@ app.get('/', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor ejecutándose en el puerto ${PORT}`);
 });
+
