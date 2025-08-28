@@ -9,70 +9,67 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Configuración de Google Sheets
-const doc = new GoogleSpreadsheet('1SsUUtsYqFBdXj6ho9LIiLpMgSTw8JwnTH9k8yOERErs');
-
-// Función para limpiar y formatear la clave privada
-function formatPrivateKey(key) {
-  // Si la clave ya tiene saltos de línea reales, devolver tal cual
-  if (key.includes('-----BEGIN PRIVATE KEY-----')) {
-    return key;
-  }
-  
-  // Si la clave usa \n, reemplazarlos por saltos de línea reales
-  if (key.includes('\\n')) {
-    return key.replace(/\\n/g, '\n');
-  }
-  
-  // Para otros formatos, intentar reconstruir la clave
-  return `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
-}
-
 // Ruta para obtener los datos de las firmas
 app.get('/api/firmas', async (req, res) => {
   try {
+    console.log('Iniciando obtención de firmas...');
+    
     // Verificar que las variables de entorno estén configuradas
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-      throw new Error('Configuración de Google API no encontrada');
+      throw new Error('Configuración de Google API no encontrada. Verifica las variables de entorno.');
     }
+
+    console.log('Credenciales encontradas, inicializando documento...');
     
-    // Formatear correctamente la clave privada
-    const privateKey = formatPrivateKey(process.env.GOOGLE_PRIVATE_KEY);
+    // Inicializar el documento de Google Sheets
+    const doc = new GoogleSpreadsheet('1SsUUtsYqFBdXj6ho9LIiLpMgSTw8JwnTH9k8yOERErs');
     
-    console.log('Email:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
-    console.log('Clave formateada:', privateKey);
+    // Formatear la clave privada
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
     
+    console.log('Autenticando con Google Sheets...');
+    
+    // Autenticar
     await doc.useServiceAccountAuth({
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       private_key: privateKey,
     });
+
+    console.log('Autenticación exitosa, cargando información del documento...');
     
+    // Cargar información del documento
     await doc.loadInfo();
-    console.log('Título del documento:', doc.title);
+    console.log('Documento cargado:', doc.title);
     
-    // Intenta encontrar la hoja correcta
-    let sheet;
-    try {
-      sheet = doc.sheetsByTitle['Respuestas de formulario 1'];
-    } catch (e) {
-      // Si no encuentra por título, usa la primera hoja
-      sheet = doc.sheetsByIndex[0];
+    // Obtener la primera hoja
+    const sheet = doc.sheetsByIndex[0];
+    console.log('Hoja seleccionada:', sheet.title);
+    
+    // Obtener filas
+    console.log('Obteniendo filas...');
+    const rows = await sheet.getRows();
+    console.log('Filas obtenidas:', rows.length);
+    
+    // DEBUG: Mostrar las primeras filas para verificar la estructura
+    if (rows.length > 0) {
+      console.log('Primera fila:', rows[0]);
+      console.log('Campos disponibles:', Object.keys(rows[0]));
     }
     
-    console.log('Título de la hoja:', sheet.title);
+    // Mapear datos - USANDO LOS NOMBRES CORRECTOS DE COLUMNAS
+    const firmas = rows.map(row => {
+      return {
+        timestamp: row['Timestamp'] || '',
+        nombre: row['Nombre completo'] || '',
+        codigo: row['Código de persona colegiada'] || ''
+      };
+    });
     
-    const rows = await sheet.getRows();
-    console.log('Número de filas:', rows.length);
-    
-    const firmas = rows.map(row => ({
-      timestamp: row['Marca de tiempo'] || row['Timestamp'] || '',
-      nombre: row['Nombre completo'] || row['Nombre'] || '',
-      codigo: row['Código de persona colegiada'] || row['Código'] || ''
-    }));
-    
+    console.log('Datos procesados correctamente. Firmas encontradas:', firmas.length);
     res.json(firmas);
+    
   } catch (error) {
-    console.error('Error al obtener las firmas:', error);
+    console.error('Error detallado al obtener las firmas:', error);
     res.status(500).json({ 
       error: 'Error al obtener los datos',
       message: error.message,

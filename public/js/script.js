@@ -25,25 +25,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cargar datos
     loadFirmas();
     
-    async function loadFirmas() {
-        try {
-            firmasBody.innerHTML = '<tr><td colspan="3" class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando firmas...</td></tr>';
-            
-            const response = await fetch('/api/firmas');
-            if (!response.ok) throw new Error('Error al cargar los datos');
-            
-            allFirmas = await response.json();
-            totalFirmas.textContent = allFirmas.length.toLocaleString();
-            
-            filteredFirmas = [...allFirmas];
-            sortFirmas(currentSort.column, currentSort.direction);
-            renderFirmas();
-            
-        } catch (error) {
-            console.error('Error:', error);
-            firmasBody.innerHTML = `<tr><td colspan="3" class="error"><i class="fas fa-exclamation-circle"></i> ${error.message}</td></tr>`;
+   // En la función loadFirmas, modifica el catch:
+async function loadFirmas() {
+    try {
+        firmasBody.innerHTML = '<tr><td colspan="3" class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando firmas...</td></tr>';
+        
+        const response = await fetch('/api/firmas');
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+            throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
         }
+        
+        allFirmas = await response.json();
+        totalFirmas.textContent = allFirmas.length.toLocaleString();
+        
+        filteredFirmas = [...allFirmas];
+        sortFirmas(currentSort.column, currentSort.direction);
+        renderFirmas();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        firmasBody.innerHTML = `<tr><td colspan="3" class="error"><i class="fas fa-exclamation-circle"></i> ${error.message}</td></tr>`;
     }
+}
     
     function renderFirmas() {
         const startIndex = (currentPage - 1) * itemsPerPage;
