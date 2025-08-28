@@ -89,40 +89,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-        
-        try {
-            // Diferentes formatos de fecha que Google Sheets podría usar
-            const date = new Date(dateString);
-            
-            // Si la fecha es inválida, intentar parsear manualmente
-            if (isNaN(date.getTime())) {
-                // Intentar parsear formato de fecha hispano (dd/mm/yyyy hh:mm:ss)
-                const hispanicFormat = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})/);
-                if (hispanicFormat) {
-                    const [, day, month, year, hours, minutes, seconds] = hispanicFormat;
-                    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
-                }
-                
-                // Si no se puede parsear, devolver el valor original
-                return dateString;
-            }
-            
-            // Formatear fecha correctamente
-            return date.toLocaleString('es-ES', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-        } catch (e) {
-            console.error('Error formateando fecha:', dateString, e);
-            return dateString; // Devolver el valor original si hay error
-        }
+    // Si no viene nada o es nulo, devolvemos "N/A"
+    if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') {
+        return 'N/A';
     }
-    
+
+    try {
+        const date = new Date(dateString);
+
+        // Verificar si la fecha es válida
+        if (isNaN(date.getTime())) {
+            // Intentar parsear formato de fecha hispano (dd/mm/yyyy hh:mm:ss)
+            const hispanicFormat = dateString.match(
+                /(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2})(?::(\d{2}))?/
+            );
+            if (hispanicFormat) {
+                const [, day, month, year, hours, minutes, seconds = '00'] = hispanicFormat;
+                return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year} ${hours.padStart(2, '0')}:${minutes}:${seconds.padStart(2, '0')}`;
+            }
+
+            // Si no se puede parsear, devolver el valor original
+            return dateString;
+        }
+
+        // Fecha válida: formatear en español
+        return date.toLocaleString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+    } catch (e) {
+        console.error('Error formateando fecha:', dateString, e);
+        return dateString; // Devolver el valor original si hay error
+    }
+}
+
     function updatePagination() {
         const totalPages = Math.ceil(filteredFirmas.length / itemsPerPage);
         

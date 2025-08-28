@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Ruta para obtener los datos de las firmas
 app.get('/api/firmas', async (req, res) => {
   try {
     console.log('Iniciando obtención de firmas...');
@@ -37,25 +38,23 @@ app.get('/api/firmas', async (req, res) => {
 
     if (rows.length > 0) {
       console.log('Ejemplo fila[0]._rawData:', rows[0]._rawData);
-      console.log('Ejemplo fila[1]._rawData:', rows[1]?._rawData);
     }
 
-    // Mapear datos: cada fila como array
+    // Mapear datos de forma segura
     const firmas = rows.map((row, index) => {
-      const raw = row._rawData; // array con celdas de la fila
-      // Ejemplo: [ "26/08/2025 09:45:00", "Juan Pérez", "12345" ]
-      return {
-        timestamp: raw[0] || '',
-        nombre: raw[1] || '',
-        codigo: raw[2] || '',
-      };
+      const raw = row._rawData || [];
+
+      const timestamp = raw[0] && raw[0].trim() !== '' ? raw[0].trim() : null;
+      const nombre = raw[1] && raw[1].trim() !== '' ? raw[1].trim() : 'N/A';
+      const codigo = raw[2] && raw[2].trim() !== '' ? raw[2].trim() : 'N/A';
+
+      // Debug por fila
+      console.log(`Fila ${index}: { timestamp: "${timestamp}", nombre: "${nombre}", codigo: "${codigo}" }`);
+
+      return { timestamp, nombre, codigo };
     });
 
-    res.json({
-      hojaSeleccionada: sheet.title,
-      totalFilas: rows.length,
-      muestra: firmas.slice(0, 5), // primeras 5 firmas
-    });
+    res.json(firmas);
 
   } catch (error) {
     console.error('Error detallado al obtener las firmas:', error);
@@ -67,6 +66,7 @@ app.get('/api/firmas', async (req, res) => {
   }
 });
 
+// Ruta de salud
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -75,6 +75,7 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Ruta principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
