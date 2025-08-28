@@ -44,9 +44,10 @@ app.get('/api/firmas', async (req, res) => {
 const firmas = rows.map((row, index) => {
   const raw = row._rawData || [];
 
-  const timestamp = raw[0]?.trim() || null;
-  const nombre = raw[1]?.trim() || 'N/A';
-  const codigo = raw[3]?.trim() || 'N/A';
+  // Tomar las columnas directamente usando fallback a '' si no existe
+  const timestamp = (raw[0] || '').trim() || null;
+  const nombre = (raw[1] || '').trim() || 'N/A';
+  const codigo = (raw[3] || '').trim() || 'N/A';
 
   console.log(`Fila ${index}: { timestamp: "${timestamp}", nombre: "${nombre}", codigo: "${codigo}" }`);
 
