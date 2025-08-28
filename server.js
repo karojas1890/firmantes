@@ -46,7 +46,7 @@ app.get('/api/firmas', async (req, res) => {
 
       const timestamp = raw[0] && raw[0].trim() !== '' ? raw[0].trim() : null;
       const nombre = raw[1] && raw[1].trim() !== '' ? raw[1].trim() : 'N/A';
-      const codigo = raw[2] && raw[2].trim() !== '' ? raw[2].trim() : 'N/A';
+      const codigo = raw[2] && raw[3].trim() !== '' ? raw[2].trim() : 'N/A';
 
       // Debug por fila
       console.log(`Fila ${index}: { timestamp: "${timestamp}", nombre: "${nombre}", codigo: "${codigo}" }`);
